@@ -3,28 +3,21 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
 
+import "./cron/scheduler.js";
+
 // Routes
 import authRoutes from "./routes/authRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import budgetRoutes from "./routes/budgetRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
-import goalRoutes from "./routes/goalRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
+import goalRoutes from "./routes/goalRoutes.js";
 import insightsRoutes from "./routes/insightsRoutes.js";
-import ingestionRoutes from "./routes/ingestionRoutes.js";
-import devInboxRoutes from "./routes/devInboxRoutes.js";
-import merchantRoutes from "./routes/merchantRoutes.js";
+import UserRoutes from "./routes/UserRoutes.js";
 
 
-
-
-// Load env & connect DB
 dotenv.config();
 connectDB();
-
-// Load Cron jobs
-import "./cron/scheduler.js";
 
 const app = express();
 
@@ -34,27 +27,21 @@ app.use(express.json());
 
 // API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/insights", insightsRoutes);
-app.use("/api/ingest", ingestionRoutes);
-app.use("/api/dev", devInboxRoutes);
-app.use("/api/merchant", merchantRoutes);
+app.use("/api/users", UserRoutes);
 
-
-
-
-// Base route
+// Test route
 app.get("/", (req, res) => {
-  res.send("Smart Financial Advisor API running");
+  res.send("API is running...");
 });
 
-// Start server
+// Server start
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

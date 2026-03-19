@@ -26,7 +26,6 @@ const REFUND_KEYWORDS = [
 ];
 
 export async function categorize(userId, merchant, description = "") {
-  const merchantName = merchant || "";
   const text = `${merchant || ""} ${description || ""}`.toLowerCase();
 
   if (!text.trim()) {
@@ -75,8 +74,8 @@ export async function categorize(userId, merchant, description = "") {
      4️⃣ USER-LEARNED RULES
   --------------------------------------------------*/
     const rule = await MerchantRule.findOne({
-        user: userId,
-        pattern: new RegExp(merchant, "i")
+    user: userId,
+    pattern: new RegExp(merchant, "i")
     });
   if (rule) {
     return {

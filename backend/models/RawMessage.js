@@ -14,7 +14,6 @@ const rawMessageSchema = new mongoose.Schema({
 
   toEmail: String,
   toPhone: String,
-  
   subject: String,
   body: { type: String, required: true },
 
@@ -30,7 +29,6 @@ const rawMessageSchema = new mongoose.Schema({
   detectedReference: String,
 
   confidenceScore: { type: Number, default: 0 },
-
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Transaction"

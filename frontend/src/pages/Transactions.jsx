@@ -8,15 +8,19 @@ import {
   Cell,
   Tooltip as ReTooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
 } from "recharts";
+
+const PIE_COLORS = [
+"#6c7cff",
+"#b06cff",
+"#6cff9f",
+"#ff7ac6",
+"#ffc857"
+];
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
+  const [summary, setSummary] = useState({income: 0,expense: 0,balance: 0,topGoal: null});
   const [visibleCount, setVisibleCount] = useState(12); // infinite scroll chunk
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -25,12 +29,14 @@ export default function Transactions() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all"); // all | income | expense
   const [filterCategory, setFilterCategory] = useState("all");
+  const [dateFilter,setDateFilter] = useState("month")
 
   const [newTx, setNewTx] = useState({
     type: "expense",
     amount: "",
     category: "",
     description: "",
+    date: new Date().toISOString().split("T")[0]
   });
   const listRef = useRef(null);
 
@@ -76,7 +82,6 @@ export default function Transactions() {
           ? res.data.items
           : [];
 
-
 setTransactions(data);
       } catch (err) {
         console.error(err);
@@ -88,6 +93,23 @@ setTransactions(data);
       }
     }
     fetchTx();
+
+    async function fetchSummary() {
+      try {
+        const res = await axios.get(
+          "http://localhost:5000/api/stats/summary",
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        setSummary(res.data);
+      } catch (err) {
+        console.error("summary error", err);
+      }
+    }
+
+    fetchSummary();
+
   }, [token]);
 
   // Infinite scroll on container
@@ -108,21 +130,51 @@ setTransactions(data);
   }, [handleScroll]);
 
   // Filtering
-  const filteredTx = useMemo(() => {
+    const filteredTx = useMemo(() => {
+
+    const now = new Date();
+
+    let startDate = null;
+
+    if(dateFilter === "week"){
+    startDate = new Date();
+    startDate.setDate(now.getDate()-7);
+    }
+
+    if(dateFilter === "month"){
+    startDate = new Date(now.getFullYear(),now.getMonth(),1);
+    }
+
+    if(dateFilter === "3months"){
+    startDate = new Date();
+    startDate.setMonth(now.getMonth()-3);
+    }
+
     return transactions
-      .filter((t) => {
-        if (filterType !== "all" && t.type !== filterType) return false;
-        if (filterCategory !== "all" && t.category !== filterCategory)
-          return false;
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-          t.description?.toLowerCase().includes(q) ||
-          t.category?.toLowerCase().includes(q)
-        );
-      })
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [transactions, filterType, filterCategory, search]);
+    .filter((t)=>{
+
+    const txDate = new Date(t.date);
+
+    if(startDate && txDate < startDate) return false;
+
+    if(filterType !== "all" && t.type !== filterType) return false;
+
+    if(filterCategory !== "all" && t.category !== filterCategory) return false;
+
+    if(!search.trim()) return true;
+
+    const q = search.toLowerCase();
+
+    return (
+    t.description?.toLowerCase().includes(q) ||
+    t.category?.toLowerCase().includes(q)
+    );
+
+    })
+    .sort((a,b)=> new Date(b.date)-new Date(a.date));
+
+    },[transactions,filterType,filterCategory,search,dateFilter]);
+
 
   const visibleTx = filteredTx.slice(0, visibleCount);
 
@@ -147,26 +199,6 @@ setTransactions(data);
     return Object.entries(sums).map(([name, value]) => ({ name, value }));
   }, [transactions]);
 
-  // Bar chart: monthly expenses for last 6 months
-  const barData = useMemo(() => {
-    const map = {};
-    transactions
-      .filter((t) => t.type === "expense")
-      .forEach((t) => {
-        const d = new Date(t.date);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-          2,
-          "0"
-        )}`;
-        map[key] = (map[key] || 0) + Number(t.amount || 0);
-      });
-
-    const entries = Object.entries(map)
-      .sort(([a], [b]) => (a > b ? 1 : -1))
-      .slice(-6);
-    return entries.map(([k, v]) => ({ month: k, amount: v }));
-  }, [transactions]);
-
   // Monthly summary for current month
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(
@@ -186,6 +218,25 @@ setTransactions(data);
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
   }, [transactions, currentMonthKey]);
 
+  const thisMonthIncome = useMemo(() => {
+  return transactions
+    .filter((t) => {
+      if (t.type !== "income") return false;
+
+      const d = new Date(t.date);
+
+      const key = `${d.getFullYear()}-${String(
+        d.getMonth() + 1
+      ).padStart(2, "0")}`;
+
+      return key === currentMonthKey;
+    })
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+}, [transactions, currentMonthKey]);
+
+const thisMonthBalance = thisMonthIncome - thisMonthTotal;
+
+
   // Add transaction
   async function handleAddTx(e) {
     e.preventDefault();
@@ -202,6 +253,7 @@ setTransactions(data);
           amount: Number(newTx.amount),
           category: newTx.category,
           description: newTx.description,
+          date: newTx.date
         },
         {
           headers: {
@@ -304,18 +356,50 @@ setTransactions(data);
         <main className="main">
           <section className="card big">
             <div className="tx-header">
-              <div>
-                <h2>Transactions</h2>
-                <p className="muted small">
-                  Track your expenses and income in real-time.
-                </p>
+              <div className="tx-kpis">
+
+                <div className="kpi">
+                  <span>This month Income</span>
+                  <b className="pos">₹{thisMonthIncome}</b>
+                </div>
+
+                <div className="kpi">
+                  <span>This month Expense</span>
+                  <b className="neg">₹{thisMonthTotal}</b>
+                </div>
+
+                <div className="kpi">
+                  <span>This month Balance</span>
+                  <b>₹{thisMonthBalance}</b>
+                </div>
+
+                {summary.topGoal && (
+                  <div className="kpi goal">
+                    <span>{summary.topGoal.name}</span>
+                    <b>{summary.topGoal.progress}%</b>
+                  </div>
+                )}
+
               </div>
+
+              <div className="tx-actions">
+
+              <button
+                className="goal-btn"
+                onClick={() => navigate(`/${usernameSlug}/goals`)}
+              >
+              + Goal
+              </button>
+
               <button
                 className="add-btn"
                 onClick={() => setShowModal(true)}
               >
-                + Add Transaction
+              + Add
               </button>
+
+              </div>
+
             </div>
 
             {/* Filters */}
@@ -335,6 +419,17 @@ setTransactions(data);
                 <option value="all">All Types</option>
                 <option value="expense">Expenses</option>
                 <option value="income">Income</option>
+                <option value="goal">Goals</option>
+              </select>
+
+              <select
+                className="filter-select"
+                value={dateFilter}
+                onChange={(e)=>setDateFilter(e.target.value)}
+                >
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="3months">Last 3 Months</option>
               </select>
 
               <select
@@ -369,7 +464,7 @@ setTransactions(data);
                       </div>
                       <div className="tx-meta">
                         <span className="badge cat">{t.category}</span>
-                        <span className="badge type">
+                        <span className={`badge type ${t.type}`}>
                           {t.type === "expense" ? "Expense" : "Income"}
                         </span>
                         <span className="muted">
@@ -378,11 +473,14 @@ setTransactions(data);
                       </div>
                     </div>
                     <div className="tx-right">
-                      <div
-                        className={
-                          t.type === "expense" ? "amt neg" : "amt pos"
+                      <div className={
+                        t.type === "expense"
+                        ? "amt neg"
+                        : t.type === "goal"
+                        ? "amt goal"
+                        : "amt pos"
                         }
-                      >
+                        >
                         {t.type === "expense" ? "-" : "+"}₹{t.amount}
                       </div>
                       <button
@@ -396,94 +494,87 @@ setTransactions(data);
                 ))}
             </div>
           </section>
-
-          {/* Bottom investment cards re-using style */}
-          <section className="cards">
-            {[65, 70, 75, 80].map((target, i) => (
-              <div key={i} className="card small">
-                <h3>Investment {i + 1}</h3>
-                <div className="progress">
-                  <div className="fill" style={{ width: `${target}%` }}></div>
-                </div>
-                <p className="muted">Target {target}%</p>
-              </div>
-            ))}
-          </section>
         </main>
 
         {/* RIGHT SIDE: Charts & summary */}
         <aside className="right">
-          <div className="card user-card">
-            <div className="avatar">👤</div>
-            <h3>{username}</h3>
-            <p className="muted">Premium User</p>
-          </div>
-
           <div className="card chart-card">
             <h3>Expense by Category</h3>
+
             {pieData.length === 0 ? (
               <div className="empty small">No expense data yet.</div>
             ) : (
               <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
+
                     <Pie
                       data={pieData}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={4}
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={3}
+                      stroke="none"
                     >
                       {pieData.map((entry, index) => (
                         <Cell
-                          key={`cell-${index}`}
-                          fill={
-                            [
-                              "#E9A96B",
-                              "#E7C4A8",
-                              "#F3D3B5",
-                              "#F8EDE2",
-                              "#5A3D8C",
-                            ][index % 5]
-                          }
+                          key={index}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
                         />
                       ))}
                     </Pie>
-                    <ReTooltip />
+
+                    <text
+                      x="50%"
+                      y="45%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      style={{ fontSize: "22px", fontWeight: 700, fill: "#e6e9ff" }}
+                    >
+                      ₹{thisMonthTotal}
+                    </text>
+
+                    <text
+                      x="50%"
+                      y="60%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      style={{ fontSize: "12px", fill: "#9aa3d2" }}
+                    >
+                      Total
+                    </text>
+
+                    <ReTooltip
+                      formatter={(value) => `₹${value}`}
+                      contentStyle={{
+                        background: "#151a3a",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: "8px"
+                      }}
+                    />
+
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             )}
           </div>
 
-          <div className="card chart-card">
-            <h3>Monthly Expenses</h3>
-            {barData.length === 0 ? (
-              <div className="empty small">
-                No expenditure in this month or recent months.
-              </div>
-            ) : (
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={barData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Bar dataKey="amount" fill="#E9A96B" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
+          {/* LEGEND CARD */}
+          <div className="card legend-card">
+            <h3>Categories</h3>
 
-          <div className="card summary-card">
-            <h3>This Month Summary</h3>
-            {thisMonthTotal === 0 ? (
-              <p className="muted">No expenditure in this month.</p>
-            ) : (
-              <p>Total expenses this month: ₹{thisMonthTotal}</p>
-            )}
+            <div className="pie-legend">
+              {pieData.map((item, i) => (
+                <div key={i} className="legend-row">
+                  <span
+                    className="legend-dot"
+                    style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
+                  />
+                  {item.name}
+                </div>
+              ))}
+            </div>
           </div>
         </aside>
 
@@ -522,14 +613,39 @@ setTransactions(data);
                 </label>
 
                 <label>
-                  <span>Category</span>
+                  <span>Date</span>
                   <input
-                    value={newTx.category}
-                    onChange={(e) =>
-                      setNewTx({ ...newTx, category: e.target.value })
+                    type="date"
+                    value={newTx.date}
+                    onChange={(e)=>
+                      setNewTx({...newTx, date:e.target.value})
                     }
                     required
                   />
+                </label>
+
+                <label>
+                  <span>Category</span>
+                  <select
+                      value={newTx.category}
+                      onChange={(e)=>setNewTx({...newTx,category:e.target.value})}
+                      >
+
+                      <option value="">Select Category</option>
+
+                      {allCategories.map((c)=>(
+                      <option key={c} value={c}>{c}</option>
+                      ))}
+
+                      <option value="__new">+ Add New Category</option>
+
+                      </select>
+                      {newTx.category === "__new" && (
+                    <input
+                      placeholder="Enter new category"
+                      onChange={(e)=>setNewTx({...newTx,category:e.target.value})}
+                      />
+                      )}
                 </label>
 
                 <label>
@@ -570,28 +686,54 @@ const CSS = `
   font-family:Poppins, system-ui, -apple-system;
 }
 
+body{
+background:#0b0f2a;
+}
+
+html{
+background:#0b0f2a;
+}
+
 .tx-app{
-  background:#FFFFFF;
-  display:flex;
-  max-width:1440px;
-  margin:auto;
-  height:100vh;
-  gap:16px;
-  padding:16px;
-  color:#2A2A2A;
+display:grid;
+grid-template-columns:200px minmax(0,1fr) 300px;
+overflow-x:hidden;
+grid-template-rows:1fr;
+grid-template-areas:
+"sidebar main right";
+
+height:100vh;
+gap:16px;
+padding:16px;
+background:#0b0f2a;
+color:#e6e9ff;
+}
+
+.tx-actions{
+display:flex;
+gap:10px;
+}
+
+.goal-btn{
+background:linear-gradient(135deg,#d4af37,#ffd700);
+color:#111;
+border:none;
+border-radius:999px;
+padding:8px 16px;
+font-weight:600;
+cursor:pointer;
+box-shadow:0 0 10px rgba(255,215,0,0.4);
 }
 
 /* SIDEBAR */
 .sidebar{
-  width:240px;
-  background:#F8EDE2;
-  border-radius:24px;
-  padding:24px 16px;
-  display:flex;
-  flex-direction:column;
-  box-shadow:
-    -4px -4px 8px rgba(255,255,255,0.7),
-    6px 6px 12px rgba(0,0,0,0.08);
+grid-area:sidebar;
+background:#0d132f;
+border-radius:20px;
+padding:24px 16px;
+display:flex;
+flex-direction:column;
+box-shadow:0 10px 30px rgba(0,0,0,0.4);
 }
 
 .logo{
@@ -618,7 +760,7 @@ const CSS = `
   font-size:14px;
   font-weight:500;
   transition:0.3s;
-  color:#2A2A2A;
+  color:#9aa3d2;
 }
 
 .nav-item span{ font-size:18px; }
@@ -628,38 +770,139 @@ const CSS = `
 }
 
 .nav-item.active{
-  background:#E7C4A8;
-  font-weight:600;
-  box-shadow:0 0 6px #E7C4A8;
+background:linear-gradient(135deg,#6c7cff,#8b5cf6);
+color:white;
+box-shadow:0 0 12px rgba(108,124,255,0.6);
 }
 
-.logout{ margin-top:auto; background:#E7C4A820; }
+.logout{
+margin-top:auto;
+background:#1e2555;
+}
 
 /* CENTER */
 .main{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
+display:flex;
+flex-direction:column;
+height:100%;
+min-width:0;
+overflow:hidden;
 }
+
 
 .card{
-  border-radius:24px;
-  padding:24px;
-  background:#F8EDE2;
-  backdrop-filter:blur(20px);
-  box-shadow:
-    -4px -4px 8px rgba(255,255,255,0.7),
-    6px 6px 14px rgba(0,0,0,0.08);
+background:#151a3a;
+border-radius:16px;
+padding:18px;
+border:1px solid rgba(255,255,255,0.05);
+box-shadow:
+0 10px 35px rgba(0,0,0,0.45),
+0 0 20px rgba(108,124,255,0.08);
+color:#e6e9ff;
 }
 
-.big{ height:380px; display:flex; flex-direction:column; gap:16px; }
+.big{
+display:flex;
+flex-direction:column;
+height:100%;
+overflow:hidden;
+}
 
 .tx-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+display:flex;
+align-items:center;
+gap:24px;
 }
+
+
+.tx-kpis{
+display:flex;
+gap:16px;
+align-items:center;
+flex-shrink:0;
+}
+
+.tx-actions{
+margin-left:auto;
+display:flex;
+gap:12px;
+}
+
+.kpi{
+flex-shrink:0;
+}
+
+.kpi{
+display:flex;
+flex-direction:column;
+justify-content:center;
+
+background:#1a2045;
+
+padding:12px 16px;
+border-radius:12px;
+
+min-width:150px;
+height:64px;
+
+border:1px solid rgba(255,255,255,0.05);
+
+box-shadow:
+0 8px 20px rgba(0,0,0,0.45),
+0 0 14px rgba(108,124,255,0.08);
+}
+
+
+
+.kpi span{
+color:#9aa3d2;
+font-size:12px;
+white-space:nowrap;
+}
+
+.kpi b{
+font-size:20px;
+font-weight:700;
+margin-top:4px;
+}
+
+.pie-legend{
+display:flex;
+flex-direction:column;
+gap:8px;
+margin-top:10px;
+}
+
+.legend-row{
+display:flex;
+align-items:center;
+gap:8px;
+font-size:13px;
+color:#cfd6ff;
+}
+
+.legend-dot{
+width:10px;
+height:10px;
+border-radius:50%;
+}
+
+.legend-card{
+padding-top:14px;
+}
+
+.legend-card h3{
+font-size:14px;
+margin-bottom:10px;
+}
+
+.kpi.goal{
+background:#262d66;
+}
+
+.pos{color:#22c55e}
+.neg{color:#ff4d6d}
+
 
 h2{ font-size:22px; }
 
@@ -668,14 +911,14 @@ h2{ font-size:22px; }
 .small{ font-size:12px; }
 
 .add-btn{
-  padding:8px 16px;
-  border-radius:999px;
-  border:none;
-  background:#E7C4A8;
-  color:#2A2A2A;
-  font-weight:500;
-  cursor:pointer;
-  box-shadow:0 4px 10px rgba(0,0,0,0.12);
+background:#6c7cff;
+color:white;
+border-radius:999px;
+padding:8px 18px;
+border:none;
+font-weight:500;
+cursor:pointer;
+box-shadow:0 0 12px rgba(108,124,255,0.5);
 }
 
 /* Filters */
@@ -685,35 +928,31 @@ h2{ font-size:22px; }
   margin-top:12px;
 }
 
-.filter-input{
-  flex:1;
-  padding:8px 12px;
-  border-radius:12px;
-  border:1px solid #A9A9A9;
-  font-size:13px;
-}
 
+.filter-input,
 .filter-select{
-  padding:8px 10px;
-  border-radius:12px;
-  border:1px solid #A9A9A9;
-  font-size:13px;
+background:#1a2045;
+border:1px solid rgba(255,255,255,0.08);
+color:#e6e9ff;
+border-radius:10px;
+padding:8px 10px;
+font-size:13px;
 }
 
 /* List */
 .tx-list{
-  margin-top:12px;
-  flex:1;
-  overflow-y:auto;
-  padding-right:4px;
+flex:1;
+overflow-y:auto;
+margin-top:10px;
+padding-right:6px;
 }
 
 .tx-row{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  padding:10px 0;
-  border-bottom:1px dashed rgba(0,0,0,0.05);
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:12px 0;
+border-bottom:1px solid rgba(255,255,255,0.06);
 }
 
 .tx-title{
@@ -736,6 +975,7 @@ h2{ font-size:22px; }
 
 .badge.cat{ background:#E7C4A833; }
 .badge.type{ background:#E9A96B33; }
+.badge.goal{background:rgba(255,215,0,0.18);color:#ffd700;}
 
 .tx-right{
   display:flex;
@@ -749,8 +989,12 @@ h2{ font-size:22px; }
   font-size:14px;
 }
 
-.amt.neg{ color:#C0392B; }
-.amt.pos{ color:#1E8449; }
+.amt.pos{ color:#22c55e; }
+.amt.neg{ color:#ff4d6d; }
+.amt.goal{
+color:#ffd700;
+font-weight:600;
+}
 
 .tx-delete{
   border:none;
@@ -785,10 +1029,11 @@ h2{ font-size:22px; }
 
 /* RIGHT */
 .right{
-  width:280px;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
+width:100%;
+max-width:300px;
+display:flex;
+flex-direction:column;
+gap:16px;
 }
 
 .user-card{
@@ -804,8 +1049,14 @@ h2{ font-size:22px; }
 }
 
 /* Charts */
-.chart-card h3{ font-size:15px; margin-bottom:6px; }
+.chart-card{
+height:260px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+}
 .chart-wrap{ width:100%; height:220px; }
+
 
 .summary-card h3{ font-size:15px; margin-bottom:4px; }
 
@@ -828,11 +1079,12 @@ h2{ font-size:22px; }
 }
 
 .modal{
-  background:#F8EDE2;
-  padding:20px 22px;
-  border-radius:20px;
-  width:360px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.18);
+background:#151a3a;
+padding:22px;
+border-radius:18px;
+width:360px;
+border:1px solid rgba(255,255,255,0.06);
+box-shadow:0 10px 40px rgba(0,0,0,0.5);
 }
 
 .modal-form{

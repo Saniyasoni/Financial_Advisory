@@ -42,6 +42,70 @@ export const getMonthlyStats = async (req, res) => {
 };
 
 
+export const getTransactionSummary = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    /* -----------------------------
+       INCOME / EXPENSE TOTAL
+    ------------------------------*/
+    const trx = await Transaction.aggregate([
+      { $match: { user: userId } },
+      {
+        $group: {
+          _id: "$type",
+          total: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    let income = 0;
+    let expense = 0;
+
+    trx.forEach(t => {
+      if (t._id === "income") income = t.total;
+      if (t._id === "expense") expense = t.total;
+    });
+
+    const balance = income - expense;
+
+    /* -----------------------------
+       TOP GOAL (highest progress)
+    ------------------------------*/
+
+    const goals = await Goal.find({ user: userId });
+
+    let topGoal = null;
+    let maxProgress = 0;
+
+    goals.forEach(g => {
+      const progress =
+        g.targetAmount > 0
+          ? (g.savedAmount / g.targetAmount) * 100
+          : 0;
+
+      if (progress > maxProgress) {
+        maxProgress = progress;
+        topGoal = {
+          name: g.name,
+          progress: Math.min(Math.round(progress), 100)
+        };
+      }
+    });
+
+    res.json({
+      income,
+      expense,
+      balance,
+      topGoal
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 // ✅ Category spending summary
 export const getCategoryStats = async (req, res) => {
   try {

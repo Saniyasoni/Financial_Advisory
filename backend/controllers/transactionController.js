@@ -1,7 +1,5 @@
 import Transaction from "../models/Transaction.js";
-import { checkBudgetAlerts } from "../services/budgetAlertservices.js";
-import User from "../models/User.js";
-
+import { checkBudgetAlerts } from "../services/budgetAlertServices.js";
 
 /**
  * @desc Add new transaction
@@ -9,14 +7,6 @@ import User from "../models/User.js";
  * @access Private
  */
 export const addTransaction = async (req, res) => {
-  const user = await User.findById(req.user.id);
-
-if (!user.emailVerified || !user.phoneVerified) {
-  return res.status(403).json({
-    message: "Verify email and phone before adding transactions"
-  });
-}
-
   try {
     const { type, amount, category, date, description } = req.body;
 
@@ -71,7 +61,7 @@ export const getTransactions = async (req, res) => {
       Transaction.find(filter)
         .sort({ date: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(100),
       Transaction.countDocuments(filter)
     ]);
 

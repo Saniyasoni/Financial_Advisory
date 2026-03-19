@@ -5,18 +5,11 @@ import User from "../models/User.js";
 import { sendEmail } from "../services/emailService.js";
 import { sendSms } from "../services/smsService.js";
 import { generateOtp, hashOtp, verifyOtp } from "../services/otpService.js";
+import { create } from "domain";
 
-async function validateEmail(email) {
+function validateEmail(email) {
   const rfcRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!rfcRegex.test(email)) return false;
-
-  const domain = email.split("@")[1];
-  try {
-    const records = await dns.resolveMx(domain);
-    return records && records.length > 0;
-  } catch {
-    return false;
-  }
+  return rfcRegex.test(email);
 }
 
 export const sendPhoneOtp = async (req, res) => {
@@ -82,7 +75,6 @@ export const resendOtp = async (req, res) => {
 
   res.json({ message: "New OTP sent" });
 };
-
 
 export const registerUser = async (req, res) => {
   try {
@@ -202,7 +194,9 @@ export const loginUser = async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        phone: user.phone,
+        createdAt: user.createdAt
       },
       token
     });

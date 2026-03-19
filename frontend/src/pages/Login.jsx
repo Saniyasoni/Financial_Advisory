@@ -4,9 +4,9 @@ import axios from "axios";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [triggered, setTriggered] = useState(false);
   const [msg, setMsg] = useState(false);
+  const [loading, setLoading] = useState(false);
   const pigRef = useRef(null);
 
 useEffect(() => {
@@ -19,6 +19,21 @@ useEffect(() => {
     setTriggered(false);
   }
 }, [email, triggered]);
+
+useEffect(() => {
+
+  const checkAutoFill = () => {
+    if (email.length > 0 && !triggered) {
+      setTriggered(true)
+      collectCoins(email.length)
+    }
+  }
+
+  const id = setInterval(checkAutoFill, 300)
+
+  return () => clearInterval(id)
+
+}, [email, triggered])
 
   function collectCoins() {
     const coins = document.querySelectorAll(".coin");
@@ -52,22 +67,32 @@ useEffect(() => {
     });
     setMsg(false);
   }
-    async function handleLogin() {
-  try {
-    const res = await axios.post("http://localhost:5000/api/auth/login", {
-      email,
-      password
-    });
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
+  async function handleLogin() {
+    try {
 
-    const slug = res.data.user.name.trim().replace(/\s+/g, "_").toLowerCase();
-    window.location.href = `/${slug}/dashboard`;
+      setLoading(true);
 
-  } catch (err) {
-    alert(err.response?.data?.message || "User not found. Check credentials.");
+      const res = await axios.post("http://localhost:5000/api/auth/login", {
+        email,
+        password
+      });
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      const slug = res.data.user.name.trim().replace(/\s+/g, "_").toLowerCase();
+      window.location.href = `/${slug}/dashboard`;
+
+    } catch (err) {
+
+      alert(err.response?.data?.message || "User not found. Check credentials.");
+
+    } finally {
+
+      setLoading(false);
+
+    }
   }
-}
 
 
   return (
@@ -109,7 +134,9 @@ useEffect(() => {
               />
             </div>
 
-           <button className="btn" onClick={handleLogin}>Sign In</button>
+           <button className="btn" onClick={handleLogin} disabled={loading}>
+            {loading ? "Signing In..." : "Sign In"}
+          </button>
            <button
             className="btn-outline"
             onClick={() => (window.location.href = "/register")}
@@ -118,18 +145,19 @@ useEffect(() => {
           </div>
 
           <div className="visual">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="coin"
-                style={{
-                  left: Math.random() * 80 + 10 + "%",
-                  top: Math.random() * 80 + 10 + "%"
-                }}
-              />
-            ))}
-
-            <div ref={pigRef} className="pig">🐷</div>
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="coin"
+              style={{
+                left: Math.random() * 80 + 10 + "%",
+                top: Math.random() * 80 + 10 + "%"
+              }}
+            />
+          ))}
+            <div ref={pigRef} className="pig">
+            <img src="/money.png" alt="money"/>
+            </div>
             {msg && <div className="msg">WELCOME! Back User Saving money is a good habit</div>}
           </div>
 
@@ -143,13 +171,13 @@ const CSS = `
 *{margin:0; padding:0; box-sizing:border-box; font-family:Poppins;}
 
 .root{
-  height:100vh;
-  background:#FFFFFF;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-  position:relative;
+height:100vh;
+background:#0b0f2a;
+display:flex;
+align-items:center;
+justify-content:center;
+overflow:hidden;
+position:relative;
 }
 
 .root::before{
@@ -198,43 +226,48 @@ const CSS = `
 }
 
 .card{
-  background:rgba(238,193,160,0.25);
-  border-radius:32px;
-  padding:32px;
-  display:flex;
-  flex-direction:column;
-  gap:24px;
-  justify-content:center;
-  backdrop-filter:blur(38px);
-  border:1px solid rgba(255,255,255,0.5);
-  box-shadow:0 8px 30px rgba(0,0,0,0.06), inset 0 0 14px rgba(255,255,255,0.6);
+background:#151a3a;
+border-radius:32px;
+padding:32px;
+display:flex;
+flex-direction:column;
+gap:24px;
+justify-content:center;
+
+border:1px solid rgba(255,255,255,0.06);
+
+box-shadow:
+0 10px 35px rgba(0,0,0,0.45),
+0 0 20px rgba(108,124,255,0.15);
+
+color:#e6e9ff;
 }
 
 .card h1{
-  font-size:30px;
-  font-weight:600;
-  color:#000;
+font-size:30px;
+font-weight:600;
+color:#e6e9ff;
 }
 
 .input-box{
-  height:50px;
-  border-radius:999px;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:0 16px;
-  border:1.2px solid #A9A9A9;
-  background:rgba(255,255,255,0.6);
-  transition:0.3s;
+height:50px;
+border-radius:999px;
+display:flex;
+align-items:center;
+gap:12px;
+padding:0 16px;
+
+background:#1a2045;
+border:1px solid rgba(255,255,255,0.08);
 }
 
 .input-box input{
-  border:none;
-  background:none;
-  outline:none;
-  width:100%;
-  font-size:16px;
-  color:#000;
+border:none;
+background:none;
+outline:none;
+width:100%;
+font-size:16px;
+color:#e6e9ff;
 }
 
 .input-box:focus-within{
@@ -243,33 +276,42 @@ const CSS = `
 }
 
 .btn{
-  width:140px;
-  height:42px;
-  border-radius:999px;
-  background:#EEC1A0;
-  border:none;
-  font-weight:600;
-  cursor:pointer;
-  font-size:15px;
-  color:#000;
-  transition:0.3s;
+width:140px;
+height:42px;
+border-radius:999px;
+
+background:#6c7cff;
+border:none;
+
+font-weight:600;
+cursor:pointer;
+font-size:15px;
+color:white;
+
+box-shadow:0 0 12px rgba(108,124,255,0.5);
 }
 
 .btn:hover{
   transform:scale(1.04);
-  box-shadow:0 4px 12px rgba(238,193,160,0.6);
+  box-shadow:0 4px 12px rgba(27, 135, 145, 0.6);
 }
+
+.btn:disabled{
+opacity:0.6;
+cursor:not-allowed;
+}
+
 .btn-outline{
-  width:140px;
-  height:42px;
-  border-radius:999px;
-  background:transparent;
-  border:1.5px solid #EEC1A0;
-  font-weight:600;
-  cursor:pointer;
-  font-size:15px;
-  color:#000;
-  transition:0.3s;
+width:160px;
+height:42px;
+border-radius:999px;
+
+background:transparent;
+border:1px solid #6c7cff;
+
+color:#e6e9ff;
+font-weight:600;
+cursor:pointer;
 }
 
 .btn-outline:hover{
@@ -289,11 +331,43 @@ const CSS = `
   border:1px solid rgba(255,255,255,0.5);
 }
 
-.pig{
-  font-size:120px;
-  z-index:2;
-  filter:drop-shadow(0 0 18px rgba(238,193,160,0.7));
-  animation:breathe 1.8s infinite alternate ease-in-out;
+.visual::before{
+content:"";
+position:absolute;
+
+width:260px;
+height:260px;
+
+background:radial-gradient(
+circle,
+rgba(0,255,150,0.25),
+transparent 70%
+);
+
+filter:blur(30px);
+}
+
+.pig img{
+width:180px;
+height:180px;
+object-fit:contain;
+filter:drop-shadow(0 0 20px rgba(108,124,255,0.6));
+}
+
+.visual{
+background: radial-gradient(circle at center,
+rgba(108,124,255,0.15),
+transparent 70%);
+
+border-radius:32px;
+position:relative;
+overflow:hidden;
+
+display:flex;
+justify-content:center;
+align-items:center;
+
+border:1px solid rgba(255,255,255,0.06);
 }
 
 @keyframes breathe{
@@ -331,7 +405,7 @@ const CSS = `
 .msg{
   position:absolute;
   bottom:22px;
-  background:#EEC1A0;
+  background:#364fc7f0;
   padding:12px 18px;
   border-radius:12px;
   font-size:14px;

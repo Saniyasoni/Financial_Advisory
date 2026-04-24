@@ -76,7 +76,7 @@ export const getTransactionSummary = async (req, res) => {
     const goals = await Goal.find({ user: userId });
 
     let topGoal = null;
-    let maxProgress = 0;
+    let maxProgress = -1;
 
     goals.forEach(g => {
       const progress =

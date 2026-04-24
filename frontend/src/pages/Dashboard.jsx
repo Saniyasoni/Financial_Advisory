@@ -428,9 +428,19 @@ useEffect(() => {
               <span>💡</span>
               <label>Insights</label>
             </div>
-            <div className="nav-item">
+            <div 
+              className="nav-item"
+              onClick={() => navigate(`/${usernameSlug}/budget`)}
+            >
               <span>🎯</span>
               <label>Budget Planner</label>
+            </div>
+            <div 
+              className="nav-item"
+              onClick={() => navigate(`/${usernameSlug}/goals`)}
+            >
+              <span>🏆</span>
+              <label>Goals</label>
             </div>
             <div
               className="nav-item"
@@ -446,7 +456,7 @@ useEffect(() => {
               onClick={() => navigate(`/${usernameSlug}/profile`)}
             >
              <span>👤</span>
-              <label>Profile</label>
+              <label>Account Settings</label>
             </div>
           </nav>
 

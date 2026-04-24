@@ -7,6 +7,8 @@ import Verify from "./pages/Verify";
 import DevInbox from "./pages/DevInbox";
 import React from "react";
 import Profile from "./pages/Profile";
+import Goals from "./pages/Goals";
+import BudgetPlanner from "./pages/BudgetPlanner";
 
 function Protected({ children }) {
   const token = localStorage.getItem("token");
@@ -49,6 +51,26 @@ export default function App() {
         element={
           <Protected>
             <Profile />
+          </Protected>
+        }
+      />
+      
+      {/* Goals */}
+      <Route
+        path="/:username/goals"
+        element={
+          <Protected>
+            <Goals />
+          </Protected>
+        }
+      />
+      
+      {/* Budget Planner */}
+      <Route
+        path="/:username/budget"
+        element={
+          <Protected>
+            <BudgetPlanner />
           </Protected>
         }
       />

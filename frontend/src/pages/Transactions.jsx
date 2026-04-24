@@ -38,6 +38,7 @@ export default function Transactions() {
     description: "",
     date: new Date().toISOString().split("T")[0]
   });
+  const [isNewCategory, setIsNewCategory] = useState(false);
   const listRef = useRef(null);
 
   const storedUser = (() => {
@@ -262,7 +263,8 @@ const thisMonthBalance = thisMonthIncome - thisMonthTotal;
         }
       );
       setTransactions((prev) => [res.data, ...prev]);
-      setNewTx({ type: "expense", amount: "", category: "", description: "" });
+      setNewTx({ type: "expense", amount: "", category: "", description: "", date: new Date().toISOString().split("T")[0] });
+      setIsNewCategory(false);
       setAdding(false);
       setShowModal(false);
     } catch (err) {
@@ -318,9 +320,13 @@ const thisMonthBalance = thisMonthIncome - thisMonthTotal;
               <span>💡</span>
               <label>Insights</label>
             </div>
-            <div className="nav-item">
+            <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/budget`)}>
               <span>🎯</span>
               <label>Budget Planner</label>
+            </div>
+            <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/goals`)}>
+              <span>🏆</span>
+              <label>Goals</label>
             </div>
             <div
               className="nav-item active"
@@ -335,7 +341,7 @@ const thisMonthBalance = thisMonthIncome - thisMonthTotal;
               onClick={() => navigate(`/${usernameSlug}/profile`)}
             >
              <span>👤</span>
-              <label>Profile</label>
+              <label>Account Settings</label>
             </div>
           </nav>
 
@@ -393,7 +399,10 @@ const thisMonthBalance = thisMonthIncome - thisMonthTotal;
 
               <button
                 className="add-btn"
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                  setShowModal(true);
+                  setIsNewCategory(false);
+                }}
               >
               + Add
               </button>
@@ -626,26 +635,43 @@ const thisMonthBalance = thisMonthIncome - thisMonthTotal;
 
                 <label>
                   <span>Category</span>
-                  <select
+                  {!isNewCategory ? (
+                    <select
                       value={newTx.category}
-                      onChange={(e)=>setNewTx({...newTx,category:e.target.value})}
-                      >
-
+                      onChange={(e) => {
+                        if (e.target.value === "__new") {
+                          setIsNewCategory(true);
+                          setNewTx({ ...newTx, category: "" });
+                        } else {
+                          setNewTx({ ...newTx, category: e.target.value });
+                        }
+                      }}
+                    >
                       <option value="">Select Category</option>
-
-                      {allCategories.map((c)=>(
-                      <option key={c} value={c}>{c}</option>
+                      {allCategories.map((c) => (
+                        <option key={c} value={c}>{c}</option>
                       ))}
-
                       <option value="__new">+ Add New Category</option>
-
-                      </select>
-                      {newTx.category === "__new" && (
-                    <input
-                      placeholder="Enter new category"
-                      onChange={(e)=>setNewTx({...newTx,category:e.target.value})}
+                    </select>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        placeholder="Enter new category"
+                        value={newTx.category}
+                        onChange={(e) => setNewTx({ ...newTx, category: e.target.value })}
+                        autoFocus
+                        style={{ flex: 1 }}
                       />
-                      )}
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsNewCategory(false);
+                          setNewTx({ ...newTx, category: "" });
+                        }}
+                        style={{ padding: '0 12px', borderRadius: '8px', background: '#1e2555', border: '1px solid rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer' }}
+                      >✕</button>
+                    </div>
+                  )}
                 </label>
 
                 <label>
@@ -810,8 +836,10 @@ overflow:hidden;
 
 .tx-header{
 display:flex;
-align-items:center;
+align-items:flex-start;
+justify-content: space-between;
 gap:24px;
+flex-wrap: wrap;
 }
 
 
@@ -819,7 +847,7 @@ gap:24px;
 display:flex;
 gap:16px;
 align-items:center;
-flex-shrink:0;
+flex-wrap: wrap;
 }
 
 .tx-actions{

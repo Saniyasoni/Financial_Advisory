@@ -312,11 +312,14 @@ const thisMonthBalance = thisMonthIncome - thisMonthTotal;
               <span>📊</span>
               <label>Dashboard</label>
             </div>
-            <div className="nav-item">
+            <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/analytics`)}>
               <span>📈</span>
               <label>Analytics</label>
             </div>
-            <div className="nav-item">
+            <div 
+              className="nav-item"
+              onClick={() => navigate(`/${usernameSlug}/insights`)}
+            >
               <span>💡</span>
               <label>Insights</label>
             </div>

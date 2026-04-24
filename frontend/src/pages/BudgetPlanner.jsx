@@ -149,8 +149,8 @@ export default function BudgetPlanner() {
           <div className="logo">FinTrack</div>
           <nav className="nav">
             <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/dashboard`)}><span>📊</span> <label>Dashboard</label></div>
-            <div className="nav-item"><span>📈</span> <label>Analytics</label></div>
-            <div className="nav-item"><span>💡</span> <label>Insights</label></div>
+            <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/analytics`)}><span>📈</span> <label>Analytics</label></div>
+            <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/insights`)}><span>💡</span> <label>Insights</label></div>
             <div className="nav-item active"><span>🎯</span> <label>Budget Planner</label></div>
             <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/goals`)}><span>🏆</span> <label>Goals</label></div>
             <div className="nav-item" onClick={() => navigate(`/${usernameSlug}/transactions`)}><span>💳</span> <label>Transactions</label></div>

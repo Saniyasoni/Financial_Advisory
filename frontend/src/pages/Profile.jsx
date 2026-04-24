@@ -111,8 +111,8 @@ export default function Profile() {
 
           <nav className="nav">
             <div className="nav-item" onClick={() => navigate(`/${slug}/dashboard`)}><span>📊</span> <label>Dashboard</label></div>
-            <div className="nav-item"><span>📈</span> <label>Analytics</label></div>
-            <div className="nav-item"><span>💡</span> <label>Insights</label></div>
+            <div className="nav-item" onClick={() => navigate(`/${slug}/analytics`)}><span>📈</span> <label>Analytics</label></div>
+            <div className="nav-item" onClick={() => navigate(`/${slug}/insights`)}><span>💡</span> <label>Insights</label></div>
             <div className="nav-item" onClick={() => navigate(`/${slug}/budget`)}><span>🎯</span> <label>Budget Planner</label></div>
             <div className="nav-item" onClick={() => navigate(`/${slug}/goals`)}><span>🏆</span> <label>Goals</label></div>
             <div className="nav-item" onClick={() => navigate(`/${slug}/transactions`)}><span>💳</span> <label>Transactions</label></div>

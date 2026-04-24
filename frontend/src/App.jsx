@@ -9,6 +9,8 @@ import React from "react";
 import Profile from "./pages/Profile";
 import Goals from "./pages/Goals";
 import BudgetPlanner from "./pages/BudgetPlanner";
+import Insights from "./pages/Insights";
+import Analytics from "./pages/Analytics";
 
 function Protected({ children }) {
   const token = localStorage.getItem("token");
@@ -74,7 +76,26 @@ export default function App() {
           </Protected>
         }
       />
+      
+      {/* Insights */}
+      <Route
+        path="/:username/insights"
+        element={
+          <Protected>
+            <Insights />
+          </Protected>
+        }
+      />
 
+      {/* Analytics */}
+      <Route
+        path="/:username/analytics"
+        element={
+          <Protected>
+            <Analytics />
+          </Protected>
+        }
+      />
 
       </Routes>
 
